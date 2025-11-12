@@ -31,7 +31,7 @@ namespace Ezel_Market.Controllers
             _roleManager = roleManager;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(DateTime? fechaInicio, DateTime? fechaFin)
         {
             if (User.Identity.IsAuthenticated)
             {
@@ -45,18 +45,43 @@ namespace Ezel_Market.Controllers
                 }
                 else
                 {
-                    // DEBUG: Si el usuario es null
                     ViewBag.DebugInfo = "Usuario no encontrado en la base de datos";
                 }
             }
             else
             {
-                // DEBUG: Si no está autenticado
                 ViewBag.DebugInfo = "Usuario no autenticado";
             }
 
-            return View();
+            if (!fechaInicio.HasValue)
+                fechaInicio = DateTime.Now.AddDays(-30);
+            if (!fechaFin.HasValue)
+                fechaFin = DateTime.Now;
+
+            var topBebidas = await _context.PedidoDetalles
+                .Include(dv => dv.Inventario)
+                .Include(dv => dv.Pedido)
+                .Where(dv => dv.Pedido.FechaPedido >= fechaInicio && dv.Pedido.FechaPedido <= fechaFin)
+                .GroupBy(dv => new { dv.Inventario.Id, dv.Inventario.NombreProducto })
+                .Select(g => new TopBebidasViewModel
+                {
+                    NombreBebida = g.Key.NombreProducto,
+                    CantidadVendida = g.Sum(x => x.Cantidad),
+                    IngresoGenerado = g.Sum(x => x.PrecioUnitario * x.Cantidad)
+                })
+                .OrderByDescending(t => t.CantidadVendida)
+                .Take(5)
+                .ToListAsync();
+
+            ViewBag.TopBebidas = topBebidas;
+            ViewBag.FechaInicio = fechaInicio?.ToString("yyyy-MM-dd");
+            ViewBag.FechaFin = fechaFin?.ToString("yyyy-MM-dd");
+
+            return View(topBebidas);
         }
+
+
+
 
         // [MANTENER TODOS TUS OTROS MÉTODOS EXISTENTES AQUÍ...]
         public async Task<IActionResult> ListarUsuarios()

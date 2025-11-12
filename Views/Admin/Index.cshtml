@@ -1,6 +1,8 @@
 @{
     ViewData["Title"] = "Panel de Administración";
 }
+@model IEnumerable<Ezel_Market.Models.TopBebidasViewModel>
+
 <!DOCTYPE html>
 <html lang="es">
 
@@ -32,29 +34,29 @@
 
                 <nav class="nav flex-column mt-4 px-3">
                     <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")"
-                       href="/Admin/Index">
+                        href="/Admin/Index">
                         <i class="bi bi-house-door me-2"></i>Inicio
                     </a>
                     <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "ListarUsuarios" ? "active" : "")"
-                       href="/Admin/ListarUsuarios">
+                        href="/Admin/ListarUsuarios">
                         <i class="bi bi-people me-2"></i>Usuarios
                     </a>
                     <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "AsignarRoles" ? "active" : "")"
-                       href="/Admin/AsignarRoles">
+                        href="/Admin/AsignarRoles">
                         <i class="bi bi-person-gear me-2"></i>Asignar Roles
                     </a>
-                    <a class="nav-link active" href="/Admin/ListarCupones"><i class="bi bi-ticket-perforated me-2"></i>Cupones</a>
+                    <a class="nav-link active" href="/Admin/ListarCupones"><i
+                            class="bi bi-ticket-perforated me-2"></i>Cupones</a>
                     <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Perfil" ? "active" : "")"
-                       href="/Admin/Perfil">
+                        href="/Admin/Perfil">
                         <i class="bi bi-person me-2"></i>Perfil
                     </a>
-                    <a class="nav-link"
-                       href="/Inventario/Index">
+                    <a class="nav-link" href="/Inventario/Index">
                         <i class="bi bi-box me-2"></i>Gestión de Inventario
                     </a>
 
                     <button type="button" class="nav-link text-danger w-100 text-start bg-transparent border-0 mt-2"
-                            data-bs-toggle="modal" data-bs-target="#logoutModal">
+                        data-bs-toggle="modal" data-bs-target="#logoutModal">
                         <i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión
                     </button>
                 </nav>
@@ -84,8 +86,8 @@
                 <main class="p-4">
                     <!-- Mensaje de bienvenida -->
                     <div class="text-center mb-4">
-                        
-                        
+
+
                         <!-- DEBUG TEMPORAL -->
                         @if (ViewBag.DebugInfo != null)
                         {
@@ -93,7 +95,7 @@
                                 <strong>Debug:</strong> @ViewBag.DebugInfo
                             </div>
                         }
-                    
+
                         @if (User.Identity.IsAuthenticated)
                         {
                             <div class="alert alert-success mt-4">
@@ -146,6 +148,44 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- 🔥 Sección de Top Bebidas Más Vendidas -->
+                        <div class="mt-5">
+                            <h4 class="mb-4 text-primary"><i class="bi bi-trophy me-2"></i>Top Bebidas Más Vendidas</h4>
+
+                            @if (Model != null && Model.Any())
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle shadow-sm">
+                                        <thead class="table-primary">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Nombre de la Bebida</th>
+                                                <th>Cantidad Vendida</th>
+                                                <th>Ingreso Generado</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var (item, index) in Model.Select((value, i) => (value, i + 1)))
+                                            {
+                                                <tr>
+                                                    <td>@index</td>
+                                                    <td>@item.NombreBebida</td>
+                                                    <td>@item.CantidadVendida</td>
+                                                    <td>S/@item.IngresoGenerado.ToString("N2")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-info">
+                                    No hay registros de ventas disponibles en el período seleccionado.
+                                </div>
+                            }
+                        </div>
+
                     </div>
                 </main>
             </div>
@@ -178,4 +218,5 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>
