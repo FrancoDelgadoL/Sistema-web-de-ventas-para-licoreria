@@ -1,0 +1,1244 @@
+@model Ezel_Market.Models.ClienteCatalogoViewModel
+@{
+    ViewData["Title"] = "Catálogo de Productos";
+}
+
+<!-- Script para verificar autenticación -->
+<script>
+    // Función global para verificar si el usuario está autenticado
+    function usuarioEstaAutenticado() {
+        return @User.Identity.IsAuthenticated.ToString().ToLower() === true;
+    }
+</script>
+
+<link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+<div class="container-fluid py-4">
+    <!-- Header con Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="filter-section">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h2 class="mb-0">🍻 Nuestro Catálogo</h2>
+                        <p class="text-muted mb-0">Encuentra tus bebidas favoritas</p>
+                    </div>
+                    <div class="col-md-4">
+                        <select class="form-select" id="categoria-filter">
+                            <option value="0">Todas las categorías</option>
+                            @foreach (var categoria in Model.Categorias)
+                            {
+                                <option value="@categoria.Id">@categoria.Nombre</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2 text-end">
+                        <!-- Botón para ver cupones -->
+                        <button class="btn btn-outline-success me-2" id="btn-ver-cupones">
+                            <i class="fas fa-ticket-alt"></i> Ver Cupones
+                        </button>
+                        <!-- Botón del Carrito -->
+                        <button class="btn btn-outline-primary position-relative cart-icon" id="carrito-btn">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span class="cart-badge" id="carrito-contador" style="display: none;">0</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid de Productos -->
+    <div class="product-grid" id="productos-container">
+        @foreach (var producto in Model.Productos)
+        {
+            var categoriasProducto = producto.CategoriaInventarios?.Select(ci => ci.Categoria?.Nombre).ToList() ?? new List<string>();
+            var categoriaPrincipal = categoriasProducto.FirstOrDefault() ?? "Sin categoría";
+            var categoriasIds = producto.CategoriaInventarios?.Select(ci => ci.CategoriaId.ToString()).ToList() ?? new List<string>();
+            var categoriasString = string.Join(",", categoriasIds);
+            
+            <div class="card product-card" data-categoria="@categoriasString">
+                <div class="position-relative">
+                    <img src="@(string.IsNullOrEmpty(producto.Imagen) ? "/images/placeholder.jpg" : producto.Imagen)" 
+                         class="card-img-top product-image" alt="@producto.NombreProducto">
+                    <span class="badge bg-success category-badge">@categoriaPrincipal</span>
+                    @if (producto.Cantidad <= 5)
+                    {
+                        <span class="badge bg-warning stock-badge">Poco Stock</span>
+                    }
+                </div>
+                
+                <div class="card-body">
+                    <h5 class="card-title">@producto.NombreProducto</h5>
+                    <p class="card-text text-muted small">@producto.Marca</p>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="price">S/ @producto.PrecioVentaMinorista.ToString("0.00")</span>
+                        <span class="badge @(producto.Cantidad > 10 ? "bg-success" : producto.Cantidad > 0 ? "bg-warning" : "bg-danger")">
+                            Stock: @producto.Cantidad
+                        </span>
+                    </div>
+                    <div class="btn-group w-100">
+                        <button class="btn btn-ver btn-sm btn-ver-detalles" 
+                                data-id="@producto.Id"
+                                data-nombre="@producto.NombreProducto">
+                            <i class="fas fa-eye"></i> Ver
+                        </button>
+                        <button class="btn btn-agregar btn-sm btn-agregar-carrito @(producto.Cantidad == 0 ? "disabled" : "")"
+                                data-id="@producto.Id"
+                                data-nombre="@producto.NombreProducto"
+                                data-precio="@producto.PrecioVentaMinorista"
+                                data-stock="@producto.Cantidad"
+                                data-imagen="@(string.IsNullOrEmpty(producto.Imagen) ? "/images/placeholder.jpg" : producto.Imagen)"
+                                @(producto.Cantidad == 0 ? "disabled" : "")>
+                            <i class="fas fa-cart-plus"></i> 
+                            @(producto.Cantidad == 0 ? "Sin Stock" : "Agregar")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Mensaje cuando no hay productos -->
+    <div id="no-products" class="text-center py-5" style="display: none;">
+        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+        <h4>No se encontraron productos</h4>
+        <p class="text-muted">Intenta con otra categoría o criterio de búsqueda</p>
+    </div>
+</div>
+
+<!-- Modal para Ver Cupones -->
+<div class="modal fade" id="modalCupones" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">🎫 Cupones Disponibles</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="cupones-content">
+                <!-- Contenido cargado por JavaScript -->
+                <div id="loading-cupones" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando cupones...</span>
+                    </div>
+                    <p class="mt-2">Cargando cupones disponibles...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Detalles del Producto -->
+<div class="modal fade" id="modalDetalles" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalles del Producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detalles-content">
+                <!-- Contenido cargado por JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="btn-agregar-desde-detalles">Agregar al Carrito</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Agregar al Carrito -->
+<div class="modal fade" id="modalAgregarCarrito" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Agregar al Carrito</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-agregar-carrito">
+                    <input type="hidden" id="producto-id">
+                    <div class="text-center mb-4">
+                        <img id="producto-imagen-modal" src="" class="img-fluid rounded" style="max-height: 150px;">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Producto</label>
+                        <input type="text" class="form-control" id="producto-nombre" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Precio unitario</label>
+                        <input type="text" class="form-control" id="producto-precio" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Stock disponible</label>
+                        <input type="text" class="form-control" id="producto-stock" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Cantidad</label>
+                        <div class="quantity-controls">
+                            <button type="button" class="btn btn-outline-secondary quantity-btn" id="btn-decrementar">-</button>
+                            <input type="number" class="form-control quantity-input" id="cantidad" value="1" min="1" max="1">
+                            <button type="button" class="btn btn-outline-secondary quantity-btn" id="btn-incrementar">+</button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Total</label>
+                        <input type="text" class="form-control fw-bold text-success" id="total-precio" readonly>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn-confirmar-agregar">
+                    <i class="fas fa-check"></i> Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal del Carrito -->
+<div class="modal fade" id="modalCarrito" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">🛒 Mi Carrito de Compras</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="carrito-vacio" class="text-center py-4">
+                    <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                    <h5>Tu carrito está vacío</h5>
+                    <p class="text-muted">Agrega algunos productos para continuar</p>
+                </div>
+                
+                <div id="carrito-contenido" style="display: none;">
+                    <!-- Items del Carrito -->
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Precio</th>
+                                    <th>Cantidad</th>
+                                    <th>Subtotal</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="carrito-items">
+                                <!-- Items cargados por JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Cupón y Resumen -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">🎫 Aplicar Cupón</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="codigo-cupon" placeholder="Ingresa tu código">
+                                        <button class="btn btn-outline-primary" type="button" id="btn-aplicar-cupon">Aplicar</button>
+                                    </div>
+                                    <div id="cupon-mensaje" class="mt-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card summary-card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">📊 Resumen de Compra</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Subtotal:</span>
+                                        <span id="carrito-subtotal">S/ 0.00</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Descuento:</span>
+                                        <span id="carrito-descuento" class="text-success">S/ 0.00</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>IGV (18%):</span>
+                                        <span id="carrito-igv">S/ 0.00</span>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between fw-bold fs-5">
+                                        <span>Total:</span>
+                                        <span id="carrito-total" class="text-primary">S/ 0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Seguir comprando</button>
+                <button type="button" class="btn btn-danger" id="btn-limpiar-carrito" style="display: none;">
+                    <i class="fas fa-trash"></i> Limpiar Carrito
+                </button>
+                <button type="button" class="btn btn-success" id="btn-proceder-pago" style="display: none;">
+                    <i class="fas fa-credit-card"></i> Proceder al Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Pago -->
+<div class="modal fade" id="modalPago" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">💳 Proceso de Pago</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-pago">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="mb-3">📍 Dirección de Envío</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Dirección completa *</label>
+                                <textarea class="form-control" id="direccion-envio" rows="3" placeholder="Ingresa tu dirección completa..." required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Referencia</label>
+                                <input type="text" class="form-control" id="referencia" placeholder="Ej: Frente al parque...">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="mb-3">💳 Método de Pago</h6>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="metodo-pago" value="Tarjeta" checked>
+                                <label class="form-check-label">💳 Tarjeta de Crédito/Débito</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="metodo-pago" value="PayPal">
+                                <label class="form-check-label">🔵 PayPal</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metodo-pago" value="Efectivo">
+                                <label class="form-check-label">💰 Pago en Efectivo</label>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <h6 class="mb-3">📋 Resumen del Pedido</h6>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div id="resumen-pedido">
+                                            <!-- Resumen cargado por JavaScript -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btn-confirmar-pedido">
+                    <i class="fas fa-check-circle"></i> Confirmar Pedido
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ========== VARIABLES GLOBALES ==========
+    let carritoData = {};
+    let descuentoAplicado = 0;
+    let cuponAplicado = '';
+    let productoActual = null;
+
+    // ========== INICIALIZACIÓN ==========
+    document.addEventListener('DOMContentLoaded', function() {
+        inicializarEventListeners();
+        cargarCarrito();
+    });
+
+    // ========== FUNCIÓN PRINCIPAL DE EVENT LISTENERS ==========
+    function inicializarEventListeners() {
+        // Botón para ver cupones
+        const btnVerCupones = document.getElementById('btn-ver-cupones');
+        if (btnVerCupones) {
+            btnVerCupones.addEventListener('click', function(e) {
+                e.preventDefault();
+                cargarCuponesDisponibles();
+                abrirModal('modalCupones');
+            });
+        }
+
+        // Botón del carrito
+        const carritoBtn = document.getElementById('carrito-btn');
+        if (carritoBtn) {
+            carritoBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                cargarCarrito();
+                abrirModal('modalCarrito');
+            });
+        }
+
+        // Delegado de eventos para botones dinámicos
+        document.addEventListener('click', function(e) {
+            if (e.target.matches('.btn-agregar-carrito')) {
+                const inventarioId = e.target.getAttribute('data-id');
+                abrirModalCantidad(inventarioId);
+            }
+            
+            if (e.target.matches('.btn-ver-detalles')) {
+                const inventarioId = e.target.getAttribute('data-id');
+                cargarDetallesProducto(inventarioId);
+            }
+        });
+
+        // Filtro por categoría
+        const filtroCategoria = document.getElementById('categoria-filter');
+        if (filtroCategoria) {
+            filtroCategoria.addEventListener('change', filtrarPorCategoria);
+        }
+
+        // Inicializar otros listeners
+        inicializarListenersModales();
+    }
+
+    function inicializarListenersModales() {
+        // Confirmar agregar al carrito
+        const btnConfirmar = document.getElementById('btn-confirmar-agregar');
+        if (btnConfirmar) {
+            btnConfirmar.addEventListener('click', confirmarAgregarAlCarrito);
+        }
+
+        // Controles de cantidad
+        document.getElementById('btn-incrementar')?.addEventListener('click', incrementarCantidad);
+        document.getElementById('btn-decrementar')?.addEventListener('click', decrementarCantidad);
+
+        // Cupón
+        document.getElementById('btn-aplicar-cupon')?.addEventListener('click', aplicarCupon);
+
+        // Pago
+        document.getElementById('btn-proceder-pago')?.addEventListener('click', procederPago);
+        document.getElementById('btn-confirmar-pedido')?.addEventListener('click', confirmarPedido);
+        document.getElementById('btn-limpiar-carrito')?.addEventListener('click', limpiarCarrito);
+
+        // Agregar desde detalles
+        const btnAgregarDesdeDetalles = document.getElementById('btn-agregar-desde-detalles');
+        if (btnAgregarDesdeDetalles) {
+            btnAgregarDesdeDetalles.addEventListener('click', function() {
+                if (productoActual && productoActual.id) {
+                    bootstrap.Modal.getInstance(document.getElementById('modalDetalles'))?.hide();
+                    abrirModalCantidad(productoActual.id); 
+                } else {
+                    mostrarAlerta('No se pudo obtener el ID del producto.', 'error');
+                }
+            });
+        }
+    }
+
+    // ========== FUNCIONES DE MODALES ==========
+    function abrirModal(modalId) {
+        const modalElement = document.getElementById(modalId);
+        if (modalElement) {
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        }
+    }
+
+    // ========== FUNCIONES DE CUPONES ==========
+    function cargarCuponesDisponibles() {
+        if (!usuarioEstaAutenticado()) {
+            document.getElementById('cupones-content').innerHTML = `
+                <div class="alert alert-warning text-center">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                    <h5>Debes iniciar sesión para ver los cupones disponibles</h5>
+                    <p>Inicia sesión para acceder a todas las promociones</p>
+                </div>
+            `;
+            return;
+        }
+
+        fetch('/Cliente/ObtenerTodosCuponesDisponibles')
+            .then(response => {
+                if (response.status === 401) {
+                    document.getElementById('cupones-content').innerHTML = `
+                        <div class="alert alert-warning text-center">
+                            <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                            <h5>Debes iniciar sesión para ver los cupones disponibles</h5>
+                            <p>Inicia sesión para acceder a todas las promociones</p>
+                        </div>
+                    `;
+                    return null;
+                }
+                if (!response.ok) {
+                    throw new Error('Error al cargar cupones');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.success) {
+                    mostrarCuponesEnModal(data.cupones);
+                } else {
+                    document.getElementById('cupones-content').innerHTML = `
+                        <div class="alert alert-info text-center">
+                            <i class="fas fa-info-circle fa-2x mb-3"></i>
+                            <h5>No hay cupones disponibles</h5>
+                            <p>Vuelve pronto para nuevas promociones</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error al cargar cupones:', error);
+                document.getElementById('cupones-content').innerHTML = `
+                    <div class="alert alert-danger text-center">
+                        <i class="fas fa-exclamation-circle fa-2x mb-3"></i>
+                        <h5>Error al cargar cupones</h5>
+                        <p>Intenta nuevamente más tarde</p>
+                    </div>
+                `;
+            });
+    }
+
+    function mostrarCuponesEnModal(cupones) {
+        let html = '';
+        
+        if (cupones && cupones.length > 0) {
+            html = `
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <p class="text-muted">Se encontraron ${cupones.length} cupones disponibles</p>
+                    </div>
+                </div>
+                <div class="row">
+            `;
+            
+            cupones.forEach(cupon => {
+                const esValido = cupon.esValido;
+                const bgClass = esValido ? 'border-success' : 'border-secondary';
+                const textClass = esValido ? '' : 'text-muted';
+                
+                html += `
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 ${bgClass}">
+                            <div class="card-body ${textClass}">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="card-title">${cupon.codigo}</h5>
+                                    <span class="badge ${esValido ? 'bg-success' : 'bg-secondary'}">
+                                        ${esValido ? 'Disponible' : 'No disponible'}
+                                    </span>
+                                </div>
+                                <p class="card-text">${cupon.descripcion}</p>
+                                <div class="mb-2">
+                                    <strong class="text-primary">Descuento: ${cupon.descuento}</strong>
+                                </div>
+                                <div class="small">
+                                    <div><i class="fas fa-calendar-alt me-1"></i> Válido hasta: ${cupon.expiracion}</div>
+                                    <div><i class="fas fa-shopping-bag me-1"></i> ${cupon.minimoCompraTexto}</div>
+                                    <div><i class="fas fa-ticket-alt me-1"></i> Usos disponibles: ${cupon.usosDisponibles}</div>
+                                </div>
+                                ${!esValido ? `
+                                    <div class="mt-2">
+                                        <small class="text-danger"><i class="fas fa-info-circle me-1"></i> ${cupon.mensajeValidacion}</small>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        } else {
+            html = `
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                    <h5>No hay cupones disponibles</h5>
+                    <p>Vuelve pronto para nuevas promociones</p>
+                </div>
+            `;
+        }
+        
+        document.getElementById('cupones-content').innerHTML = html;
+    }
+
+    // ========== FUNCIONES DEL CATÁLOGO ==========
+    function filtrarPorCategoria() {
+        const categoriaId = this.value;
+        const productos = document.querySelectorAll('.product-card');
+        let productosVisibles = 0;
+    
+        productos.forEach(producto => {
+            const categoriasProducto = producto.getAttribute('data-categoria');
+    
+            if (categoriaId === '0' || (categoriasProducto && categoriasProducto.split(',').includes(categoriaId))) {
+                producto.style.display = 'block';
+                productosVisibles++;
+            } else {
+                producto.style.display = 'none';
+            }
+        });
+    
+        document.getElementById('no-products').style.display = 
+            productosVisibles === 0 ? 'block' : 'none';
+    }
+
+    // ========== FUNCIONES DE DETALLES DEL PRODUCTO ==========
+    function cargarDetallesProducto(inventarioId) {
+        fetch(`/Cliente/ObtenerDetallesProducto?id=${inventarioId}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Error al obtener detalles');
+                return response.json();
+            })
+            .then(data => {
+                productoActual = { 
+                    id: inventarioId,
+                    nombre: data.nombre,
+                    precio: data.precio,
+                    stock: data.stock,
+                    imagenUrl: data.imagenUrl
+                }; 
+                mostrarDetallesProducto(data);
+            })
+            .catch(error => {
+                mostrarAlerta('Error al cargar los detalles del producto', 'error');
+            });
+    }
+
+    function mostrarDetallesProducto(data) {
+        document.getElementById('detalles-content').innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <img src="${data.imagenUrl || '/images/placeholder.jpg'}" 
+                        class="img-fluid rounded" alt="${data.nombre}" 
+                        style="max-height: 300px; object-fit: cover;">
+                </div>
+                <div class="col-md-6">
+                    <h4>${data.nombre}</h4>
+                    <p class="text-muted">${data.descripcion}</p>
+                    <div class="mb-3">
+                        <span class="badge bg-primary fs-6">S/ ${data.precio.toFixed(2)}</span>
+                        <span class="badge bg-success ms-2">Stock: ${data.stock}</span>
+                    </div>
+                    <div class="mt-4">
+                        <h6>📋 Características:</h6>
+                        <div class="bg-light p-3 rounded">
+                            ${data.caracteristicas || 'No hay características adicionales disponibles.'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const btnAgregarDetalles = document.getElementById('btn-agregar-desde-detalles');
+        if (btnAgregarDetalles) {
+            if (data.stock <= 0) {
+                btnAgregarDetalles.classList.add('disabled');
+                btnAgregarDetalles.textContent = 'Sin Stock';
+                btnAgregarDetalles.setAttribute('disabled', 'true');
+            } else {
+                btnAgregarDetalles.classList.remove('disabled');
+                btnAgregarDetalles.textContent = 'Agregar al Carrito';
+                btnAgregarDetalles.removeAttribute('disabled');
+            }
+        }
+
+        abrirModal('modalDetalles');
+    }
+
+    // ========== FUNCIONES DEL MODAL AGREGAR AL CARRITO ==========
+    function abrirModalCantidad(inventarioId) {
+        const btn = document.querySelector(`.btn-agregar-carrito[data-id="${inventarioId}"]`);
+        if (!btn) return;
+        
+        const productoNombre = btn.getAttribute('data-nombre');
+        const productoPrecio = parseFloat(btn.getAttribute('data-precio'));
+        const productoStock = parseInt(btn.getAttribute('data-stock'));
+        const productoImagen = btn.getAttribute('data-imagen');
+        
+        document.getElementById('producto-id').value = inventarioId;
+        document.getElementById('producto-nombre').value = productoNombre;
+        document.getElementById('producto-precio').value = `S/ ${productoPrecio.toFixed(2)}`;
+        document.getElementById('producto-stock').value = productoStock;
+        document.getElementById('producto-imagen-modal').src = productoImagen || '/images/placeholder.jpg';
+        
+        const cantidadInput = document.getElementById('cantidad');
+        cantidadInput.max = productoStock;
+        cantidadInput.value = 1;
+        cantidadInput.min = 1;
+        
+        cantidadInput.oninput = calcularTotalAgregar;
+        
+        calcularTotalAgregar();
+        abrirModal('modalAgregarCarrito');
+    }
+
+    function incrementarCantidad() {
+        const input = document.getElementById('cantidad');
+        const max = parseInt(input.max);
+        const currentValue = parseInt(input.value) || 1;
+        if (currentValue < max) {
+            input.value = currentValue + 1;
+            calcularTotalAgregar();
+        }
+    }
+
+    function decrementarCantidad() {
+        const input = document.getElementById('cantidad');
+        const currentValue = parseInt(input.value) || 1;
+        if (currentValue > 1) {
+            input.value = currentValue - 1;
+            calcularTotalAgregar();
+        }
+    }
+
+    function calcularTotalAgregar() {
+        const cantidad = parseInt(document.getElementById('cantidad').value) || 0;
+        const precioText = document.getElementById('producto-precio').value;
+        const precio = parseFloat(precioText.replace('S/ ', '')) || 0;
+        const total = cantidad * precio;
+        
+        document.getElementById('total-precio').value = `S/ ${total.toFixed(2)}`;
+    }
+
+    function confirmarAgregarAlCarrito() {
+        const inventarioId = document.getElementById('producto-id').value;
+        const cantidad = parseInt(document.getElementById('cantidad').value) || 1;
+        const stock = parseInt(document.getElementById('producto-stock').value);
+
+        if (cantidad > stock) {
+            mostrarAlerta(`Solo hay ${stock} unidades en stock.`, 'error');
+            return;
+        }
+        
+        if (!inventarioId || cantidad < 1) {
+            mostrarAlerta('Cantidad inválida', 'error');
+            return;
+        }
+        
+        const data = {
+            inventarioId: parseInt(inventarioId),
+            cantidad: cantidad
+        };
+        
+        fetch('/Cliente/AgregarAlCarrito', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => { 
+                    throw new Error(text || 'Error en el servidor'); 
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalAgregarCarrito'))?.hide();
+                cargarCarrito();
+                mostrarAlerta(data.message, 'success');
+            } else {
+                throw new Error(data.message);
+            }
+        })
+        .catch(error => {
+            mostrarAlerta(error.message || 'Error al agregar el producto al carrito', 'error');
+        });
+    }
+
+    // ========== FUNCIONES DEL CARRITO (CORREGIDAS) ==========
+    function cargarCarrito() {
+        fetch('/Cliente/ObtenerCarrito')
+            .then(response => {
+                if (response.status === 401) throw new Error('Unauthorized');
+                if (!response.ok) throw new Error('Error al cargar el carrito');
+                return response.json();
+            })
+            .then(data => {
+                carritoData = data;
+                renderizarCarrito();
+            })
+            .catch(error => {
+                if (error.message === 'Unauthorized') {
+                    mostrarAlerta('Debes iniciar sesión para usar el carrito', 'warning');
+                } else {
+                    mostrarAlerta('Error al cargar el carrito', 'error');
+                }
+            });
+    }
+
+    function renderizarCarrito() {
+        const carritoVacio = document.getElementById('carrito-vacio');
+        const carritoContenido = document.getElementById('carrito-contenido');
+        const carritoItems = document.getElementById('carrito-items');
+        const btnProcederPago = document.getElementById('btn-proceder-pago');
+        const btnLimpiarCarrito = document.getElementById('btn-limpiar-carrito');
+        
+        // ✅ CORRECCIÓN: Declarar currentSubtotal AL INICIO
+        const currentSubtotal = carritoData.subtotal || 0;
+
+        if (carritoData.items && carritoData.items.length > 0) {
+            carritoVacio.style.display = 'none';
+            carritoContenido.style.display = 'block';
+            btnProcederPago.style.display = 'block';
+            btnLimpiarCarrito.style.display = 'block';
+            
+            carritoItems.innerHTML = '';
+            
+            carritoData.items.forEach(item => {
+                const subtotal = item.precio * item.cantidad;
+                
+                carritoItems.innerHTML += `
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <img src="${item.imagenUrl || '/images/placeholder.jpg'}" 
+                                    alt="${item.nombre}" 
+                                    class="cart-item-image me-3" style="width: 60px; height: 60px; object-fit: cover;">
+                                <div>
+                                    <div class="fw-bold">${item.nombre}</div>
+                                    <small class="text-muted">${item.categoria}</small>
+                                    <div class="text-muted small">Stock: ${item.stockDisponible}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="align-middle">S/ ${item.precio.toFixed(2)}</td>
+                        <td class="align-middle">
+                            <div class="quantity-controls d-flex align-items-center">
+                                <button class="btn btn-outline-secondary btn-sm btn-restar" 
+                                        data-id="${item.id}">-</button>
+                                <span class="mx-2 fw-bold">${item.cantidad}</span>
+                                <button class="btn btn-outline-secondary btn-sm btn-sumar" 
+                                        data-id="${item.id}"
+                                        ${item.cantidad >= item.stockDisponible ? 'disabled' : ''}>+</button>
+                            </div>
+                        </td>
+                        <td class="align-middle fw-bold">S/ ${subtotal.toFixed(2)}</td>
+                        <td class="align-middle">
+                            <button class="btn btn-danger btn-sm btn-eliminar" data-id="${item.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            // ✅ CORRECCIÓN: Solo una sección de cálculos
+            const subtotalConDescuento = currentSubtotal - descuentoAplicado;
+            const igv = subtotalConDescuento * 0.18;
+            const total = subtotalConDescuento + igv;
+            
+            document.getElementById('carrito-subtotal').textContent = `S/ ${currentSubtotal.toFixed(2)}`;
+            document.getElementById('carrito-descuento').textContent = `-S/ ${descuentoAplicado.toFixed(2)}`;
+            document.getElementById('carrito-igv').textContent = `S/ ${igv.toFixed(2)}`;
+            document.getElementById('carrito-total').textContent = `S/ ${total.toFixed(2)}`;
+            
+            agregarEventListenersCarrito();
+            
+        } else {
+            carritoVacio.style.display = 'block';
+            carritoContenido.style.display = 'none';
+            btnProcederPago.style.display = 'none';
+            btnLimpiarCarrito.style.display = 'none';
+            descuentoAplicado = 0;
+            cuponAplicado = '';
+            const codigoCuponInput = document.getElementById('codigo-cupon');
+            if (codigoCuponInput) codigoCuponInput.value = '';
+            const cuponMensajeDiv = document.getElementById('cupon-mensaje');
+            if (cuponMensajeDiv) cuponMensajeDiv.innerHTML = '';
+        }
+        
+        actualizarContadorCarrito();
+    }
+
+    function agregarEventListenersCarrito() {
+        // ✅ CORRECCIÓN: Clonar botones para eliminar event listeners anteriores
+        document.querySelectorAll('.btn-sumar').forEach(btn => {
+            btn.replaceWith(btn.cloneNode(true));
+        });
+        
+        document.querySelectorAll('.btn-restar').forEach(btn => {
+            btn.replaceWith(btn.cloneNode(true));
+        });
+        
+        document.querySelectorAll('.btn-eliminar').forEach(btn => {
+            btn.replaceWith(btn.cloneNode(true));
+        });
+        
+        // ✅ Agregar nuevos event listeners
+        document.querySelectorAll('.btn-sumar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const itemId = this.getAttribute('data-id');
+                actualizarCantidad(itemId, 1);
+            });
+        });
+        
+        document.querySelectorAll('.btn-restar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const itemId = this.getAttribute('data-id');
+                actualizarCantidad(itemId, -1);
+            });
+        });
+        
+        document.querySelectorAll('.btn-eliminar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const itemId = this.getAttribute('data-id');
+                eliminarDelCarrito(itemId);
+            });
+        });
+    }
+
+    function actualizarCantidad(itemId, cambio) {
+        const item = carritoData.items.find(i => i.id == itemId);
+        if (!item) return;
+
+        const nuevaCantidad = item.cantidad + cambio;
+
+        if (nuevaCantidad <= 0) {
+            eliminarDelCarrito(itemId);
+            return;
+        }
+
+        if (nuevaCantidad > item.stockDisponible) {
+            mostrarAlerta(`No hay suficiente stock. Máximo disponible: ${item.stockDisponible}`, 'error');
+            return;
+        }
+
+        fetch('/Cliente/ActualizarCantidad', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                itemId: parseInt(itemId),
+                nuevaCantidad: nuevaCantidad
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => { 
+                    throw new Error(text || 'Error en el servidor'); 
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                cargarCarrito();
+                mostrarAlerta('Cantidad actualizada correctamente', 'success');
+            } else {
+                throw new Error(data.message);
+            }
+        })
+        .catch(error => {
+            mostrarAlerta(error.message, 'error');
+            cargarCarrito();
+        });
+    }
+
+    function eliminarDelCarrito(itemId) {
+        if (!confirm('¿Estás seguro de que quieres eliminar este producto del carrito?')) {
+            return;
+        }
+        
+        fetch('/Cliente/EliminarDelCarrito', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                itemId: parseInt(itemId)
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => { 
+                    throw new Error(text || 'Error en el servidor'); 
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                cargarCarrito();
+                mostrarAlerta(data.message, 'success');
+            } else {
+                throw new Error(data.message);
+            }
+        })
+        .catch(error => {
+            mostrarAlerta(error.message, 'error');
+        });
+    }
+
+    function limpiarCarrito() {
+        if (confirm('¿Estás seguro de que quieres vaciar completamente el carrito?')) {
+            fetch('/Cliente/LimpiarCarrito', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => { 
+                        throw new Error(text || 'Error en el servidor'); 
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    cargarCarrito();
+                    mostrarAlerta(data.message, 'success');
+                } else {
+                    throw new Error(data.message);
+                }
+            })
+            .catch(error => {
+                mostrarAlerta(error.message, 'error');
+            });
+        }
+    }
+
+    // ========== FUNCIONES DE CUPONES (CORREGIDAS) ==========
+    function aplicarCupon() {
+        const codigoCupon = document.getElementById('codigo-cupon').value.trim();
+        
+        if (!codigoCupon) {
+            mostrarAlerta('Por favor ingresa un código de cupón', 'warning');
+            return;
+        }
+        
+        fetch('/Cliente/AplicarCupon', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                codigoCupon: codigoCupon
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => { 
+                    try {
+                        const errorData = JSON.parse(text);
+                        throw new Error(errorData.message || text);
+                    } catch {
+                        throw new Error(text || 'Error en el servidor');
+                    }
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // ✅ GUARDAR el descuento aplicado
+                descuentoAplicado = data.descuento;
+                cuponAplicado = codigoCupon;
+                
+                // ✅ Mostrar mensaje de éxito
+                document.getElementById('cupon-mensaje').innerHTML = 
+                    `<div class="alert alert-success">${data.mensaje}</div>`;
+
+                // ✅ ACTUALIZAR solo los cálculos, NO recargar todo el carrito
+                actualizarResumenCarrito();
+
+                mostrarAlerta(data.mensaje, 'success');
+            } else {
+                throw new Error(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error al aplicar cupón:', error);
+            document.getElementById('cupon-mensaje').innerHTML = 
+                `<div class="alert alert-danger">${error.message || 'Error al aplicar cupón'}</div>`;
+            descuentoAplicado = 0;
+            cuponAplicado = '';
+            actualizarResumenCarrito();
+        });
+    }
+
+    // ✅ NUEVA FUNCIÓN: Actualizar solo el resumen del carrito
+    function actualizarResumenCarrito() {
+        const currentSubtotal = carritoData.subtotal || 0;
+        const subtotalConDescuento = currentSubtotal - descuentoAplicado;
+        const igv = subtotalConDescuento * 0.18;
+        const total = subtotalConDescuento + igv;
+    
+        // ✅ Actualizar solo los valores monetarios, no los items
+        document.getElementById('carrito-subtotal').textContent = `S/ ${currentSubtotal.toFixed(2)}`;
+        document.getElementById('carrito-descuento').textContent = `-S/ ${descuentoAplicado.toFixed(2)}`;
+        document.getElementById('carrito-igv').textContent = `S/ ${igv.toFixed(2)}`;
+        document.getElementById('carrito-total').textContent = `S/ ${total.toFixed(2)}`;
+    }
+
+    // ========== FUNCIONES DE PAGO ==========
+    function procederPago() {
+        const subtotalConDescuento = carritoData.subtotal - descuentoAplicado;
+        const igv = subtotalConDescuento * 0.18;
+        const total = subtotalConDescuento + igv;
+        
+        const resumen = document.getElementById('resumen-pedido');
+        resumen.innerHTML = `
+            <div class="d-flex justify-content-between mb-2">
+                <span>Subtotal:</span>
+                <span>S/ ${carritoData.subtotal.toFixed(2)}</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2 text-success">
+                <span>Descuento (${cuponAplicado ? `Cupón: ${cuponAplicado}` : 'N/A'}):</span>
+                <span>-S/ ${descuentoAplicado.toFixed(2)}</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span>IGV (18%):</span>
+                <span>S/ ${igv.toFixed(2)}</span>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between fw-bold">
+                <span>Total a pagar:</span>
+                <span class="text-primary">S/ ${total.toFixed(2)}</span>
+            </div>
+            <div class="mt-3">
+                <h6>Productos:</h6>
+                ${carritoData.items.map(item => `
+                    <div class="small text-muted">
+                        ${item.nombre} x${item.cantidad} - S/ ${(item.precio * item.cantidad).toFixed(2)}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        const modalCarrito = bootstrap.Modal.getInstance(document.getElementById('modalCarrito'));
+        if (modalCarrito) {
+            modalCarrito.hide();
+        }
+        
+        const modalPago = new bootstrap.Modal(document.getElementById('modalPago'));
+        modalPago.show();
+    }
+
+    function confirmarPedido() {
+        const direccionEnvio = document.getElementById('direccion-envio').value;
+        const metodoPagoInput = document.querySelector('input[name="metodo-pago"]:checked');
+        const metodoPago = metodoPagoInput ? metodoPagoInput.value : null;
+
+        if (!direccionEnvio.trim()) {
+            mostrarAlerta('Por favor ingresa la dirección de envío', 'warning');
+            return;
+        }
+
+        if (!metodoPago) {
+            mostrarAlerta('Por favor selecciona un método de pago', 'warning');
+            return;
+        }
+        
+        const pedidoData = {
+            direccionEnvio: direccionEnvio,
+            metodoPago: metodoPago,
+            descuentoAplicado: descuentoAplicado,
+            codigoCupon: cuponAplicado
+        };
+        
+        fetch('/Cliente/ProcesarPedido', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(pedidoData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => { 
+                    throw new Error(text || 'Error en el servidor'); 
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const modalPago = bootstrap.Modal.getInstance(document.getElementById('modalPago'));
+                if (modalPago) {
+                    modalPago.hide();
+                }
+                mostrarAlerta(`¡Pedido realizado con éxito! Número de pedido: ${data.pedidoId}`, 'success');
+                
+                // Limpiar todo
+                carritoData = {};
+                descuentoAplicado = 0;
+                cuponAplicado = '';
+                actualizarContadorCarrito();
+                
+                // Recargar página después de 3 segundos
+                setTimeout(() => {
+                    window.location.reload();
+                }, 3000);
+            } else {
+                throw new Error(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarAlerta(error.message, 'error');
+        });
+    }
+
+    // ========== FUNCIONES AUXILIARES ==========
+    function actualizarContadorCarrito() {
+        const contador = document.getElementById('carrito-contador');
+        if (contador) {
+            const cantidad = carritoData?.items?.reduce((sum, item) => sum + item.cantidad, 0) || 0;
+            contador.textContent = cantidad;
+            contador.style.display = cantidad > 0 ? 'flex' : 'none';
+        }
+    }
+
+    function mostrarAlerta(mensaje, tipo) {
+        const alertDiv = document.createElement('div');
+        const icon = tipo === 'success' ? '✅' : tipo === 'warning' ? '⚠️' : '❌';
+        const title = tipo === 'success' ? 'Éxito' : tipo === 'warning' ? 'Advertencia' : 'Error';
+
+        alertDiv.className = `alert alert-${tipo} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        
+        alertDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <span class="fs-5 me-2">${icon}</span>
+                <div>
+                    <h6 class="alert-heading mb-0">${title}</h6>
+                    <p class="mb-0 small">${mensaje}</p>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            const bootstrapAlert = bootstrap.Alert.getInstance(alertDiv);
+            if (bootstrapAlert) {
+                bootstrapAlert.dispose();
+            } else {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+
+    function usuarioEstaAutenticado() {
+        return @User.Identity.IsAuthenticated.ToString().ToLower() === true;
+    }
+</script>
+}
