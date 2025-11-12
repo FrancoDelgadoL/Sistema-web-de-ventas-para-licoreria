@@ -14,9 +14,14 @@ namespace Ezel_Market.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal PrecioUnitario { get; set; }
 
+        [NotMapped]
+        public decimal Subtotal => PrecioUnitario * Cantidad;
+
+
         // Navigation properties
         public virtual Pedido Pedido { get; set; }
         public virtual Inventario Inventario { get; set; }
+
     }
 
 }

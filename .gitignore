@@ -9,17 +9,17 @@ Release/
 # Archivos binarios
 *.exe
 *.dll
-*.pdb
+#*.pdb
 
 # Logs
 *.log
 
 # Bases de datos
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
+#*.db
+#*.db-shm
+#*.db-wal
+#*.sqlite
+#*.sqlite3
 
 # Archivos de configuración
 *.json
