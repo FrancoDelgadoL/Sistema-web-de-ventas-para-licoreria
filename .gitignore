@@ -22,7 +22,7 @@ Release/
 #*.sqlite3
 
 # Archivos de configuración
-*.json
+#*.json
 
 # Directorios de dependencias
 node_modules/
