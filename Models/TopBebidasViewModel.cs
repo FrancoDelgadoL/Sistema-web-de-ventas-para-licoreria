@@ -7,3 +7,7 @@ namespace Ezel_Market.Models
         public decimal IngresoGenerado { get; set; }
     }
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> dashboard/ventas

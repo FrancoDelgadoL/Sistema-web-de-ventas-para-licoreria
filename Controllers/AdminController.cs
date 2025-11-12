@@ -45,13 +45,11 @@ namespace Ezel_Market.Controllers
                 }
                 else
                 {
-                    // DEBUG: Si el usuario es null
                     ViewBag.DebugInfo = "Usuario no encontrado en la base de datos";
                 }
             }
             else
             {
-                // DEBUG: Si no está autenticado
                 ViewBag.DebugInfo = "Usuario no autenticado";
             }
 
@@ -79,8 +77,15 @@ namespace Ezel_Market.Controllers
             ViewBag.FechaInicio = fechaInicio?.ToString("yyyy-MM-dd");
             ViewBag.FechaFin = fechaFin?.ToString("yyyy-MM-dd");
 
+<<<<<<< HEAD
             return View();
+=======
+            return View(topBebidas);
+>>>>>>> dashboard/ventas
         }
+
+
+
 
         // [MANTENER TODOS TUS OTROS MÉTODOS EXISTENTES AQUÍ...]
         public async Task<IActionResult> ListarUsuarios()
