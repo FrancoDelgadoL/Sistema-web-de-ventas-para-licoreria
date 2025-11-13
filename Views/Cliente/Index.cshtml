@@ -615,45 +615,51 @@
     }
 
     function mostrarDetallesProducto(data) {
-        document.getElementById('detalles-content').innerHTML = `
-            <div class="row">
-                <div class="col-md-6">
-                    <img src="${data.imagenUrl || '/images/placeholder.jpg'}" 
-                        class="img-fluid rounded" alt="${data.nombre}" 
-                        style="max-height: 300px; object-fit: cover;">
+    document.getElementById('detalles-content').innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <img src="${data.imagenUrl || '/images/placeholder.jpg'}" 
+                    class="img-fluid rounded" alt="${data.nombre}" 
+                    style="max-height: 300px; object-fit: cover;">
+            </div>
+            <div class="col-md-6">
+                <h4>${data.nombre}</h4>
+                <p class="text-muted">${data.descripcion}</p>
+                <div class="mb-3">
+                    <span class="badge bg-primary fs-6">S/ ${data.precio.toFixed(2)}</span>
+                    <span class="badge bg-success ms-2">Stock: ${data.stock}</span>
                 </div>
-                <div class="col-md-6">
-                    <h4>${data.nombre}</h4>
-                    <p class="text-muted">${data.descripcion}</p>
-                    <div class="mb-3">
-                        <span class="badge bg-primary fs-6">S/ ${data.precio.toFixed(2)}</span>
-                        <span class="badge bg-success ms-2">Stock: ${data.stock}</span>
+                <div class="mt-4">
+                    <h6>📋 Características:</h6>
+                    <div class="bg-light p-3 rounded">
+                        ${data.caracteristicas || 'No hay características adicionales disponibles.'}
                     </div>
-                    <div class="mt-4">
-                        <h6>📋 Características:</h6>
-                        <div class="bg-light p-3 rounded">
-                            ${data.caracteristicas || 'No hay características adicionales disponibles.'}
-                        </div>
+                    <div class="mt-2">
+                        <strong>Promedio de reseñas:</strong> ${
+                            data.promedioResenas > 0 ? data.promedioResenas + ' ⭐' : 'No hay reseñas aún'
+                        }
                     </div>
                 </div>
             </div>
-        `;
-        
-        const btnAgregarDetalles = document.getElementById('btn-agregar-desde-detalles');
-        if (btnAgregarDetalles) {
-            if (data.stock <= 0) {
-                btnAgregarDetalles.classList.add('disabled');
-                btnAgregarDetalles.textContent = 'Sin Stock';
-                btnAgregarDetalles.setAttribute('disabled', 'true');
-            } else {
-                btnAgregarDetalles.classList.remove('disabled');
-                btnAgregarDetalles.textContent = 'Agregar al Carrito';
-                btnAgregarDetalles.removeAttribute('disabled');
-            }
+        </div>
+    `;
+    
+    const btnAgregarDetalles = document.getElementById('btn-agregar-desde-detalles');
+    if (btnAgregarDetalles) {
+        if (data.stock <= 0) {
+            btnAgregarDetalles.classList.add('disabled');
+            btnAgregarDetalles.textContent = 'Sin Stock';
+            btnAgregarDetalles.setAttribute('disabled', 'true');
+        } else {
+            btnAgregarDetalles.classList.remove('disabled');
+            btnAgregarDetalles.textContent = 'Agregar al Carrito';
+            btnAgregarDetalles.removeAttribute('disabled');
         }
-
-        abrirModal('modalDetalles');
     }
+
+    abrirModal('modalDetalles');
+}
+
 
     // ========== FUNCIONES DEL MODAL AGREGAR AL CARRITO ==========
     function abrirModalCantidad(inventarioId) {
