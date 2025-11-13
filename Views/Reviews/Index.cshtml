@@ -1,0 +1,105 @@
+@model IEnumerable<Ezel_Market.Models.Review>
+
+@{
+    ViewData["Title"] = "Reseñas";
+}
+
+<h2>Reseñas</h2>
+
+<!-- Botones de ordenamiento -->
+<div class="mb-3">
+    <button id="btnBestRated" class="btn btn-info btn-sm">Mejor calificados</button>
+    <button id="btnMostRecent" class="btn btn-secondary btn-sm">Más recientes</button>
+</div>
+
+<!-- Lista de reseñas -->
+<div id="reviewsList">
+    @foreach (var review in Model)
+    {
+        <partial name="_SingleReview" model="review" />
+    }
+</div>
+
+<hr />
+
+<!-- Formulario para agregar reseña -->
+<h4>Agregar reseña</h4>
+<form id="reviewForm">
+    <div class="mb-3">
+        <label>Producto</label>
+        <select id="productName" class="form-control" required>
+            <option value="">-- Selecciona un producto --</option>
+            @foreach (var product in ViewBag.Products)
+            {
+                <option value="@product.NombreProducto">@product.NombreProducto</option>
+            }
+        </select>
+    </div>
+    <div class="mb-3">
+        <label>Calificación</label>
+        <select id="rating" class="form-control" required>
+            <option value="">-- Selecciona una calificación --</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label>Reseña</label>
+        <textarea id="content" class="form-control" required></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Agregar Reseña</button>
+</form>
+
+@section Scripts {
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            // Agregar reseña vía AJAX
+            $("#reviewForm").submit(function (e) {
+                e.preventDefault();
+
+                var productName = $("#productName").val();
+                var content = $("#content").val();
+                var rating = $("#rating").val();
+                var userEmail = "@User.Identity.Name";
+
+                if (!productName) { alert("Selecciona un producto."); return; }
+                if (!rating) { alert("Selecciona una calificación."); return; }
+
+                $.post("/Reviews/Create", { productName, content, userEmail, rating })
+                    .done(function (partialView) {
+                        $("#reviewsList").prepend(partialView);
+                        $("#productName").val("");
+                        $("#content").val("");
+                        $("#rating").val("");
+                    });
+            });
+
+            // Botón reportar
+            $(document).on("click", ".report-btn", function () {
+                var id = $(this).data("id");
+                alert("Has reportado la reseña #" + id);
+            });
+
+            // Ordenar reseñas
+            $("#btnBestRated").click(function () {
+                $.get("/Reviews/Index", { sort: "best" })
+                    .done(function (data) {
+                        var reviewsHtml = $(data).find("#reviewsList").html();
+                        $("#reviewsList").html(reviewsHtml);
+                    });
+            });
+
+            $("#btnMostRecent").click(function () {
+                $.get("/Reviews/Index", { sort: "recent" })
+                    .done(function (data) {
+                        var reviewsHtml = $(data).find("#reviewsList").html();
+                        $("#reviewsList").html(reviewsHtml);
+                    });
+            });
+        });
+    </script>
+}
