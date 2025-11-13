@@ -1,8 +1,210 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    // Este bloque C# es solo un marcador de posición, como es común en archivos .cshtml
+    ViewData["Title"] = "Ezel Market - Tu Licorería de Confianza";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ezel Market | Licorería</title>
+    <style>
+        /* Estilos CSS Base */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+            padding: 20px 0;
+        }
+
+        /* Estilo del Header (Encabezado) */
+        header {
+            background: #791c1c; /* Morado Oscuro, color que sugiere lujo */
+            color: #fff;
+            padding: 20px 0;
+            text-align: center;
+            border-bottom: 5px solid #ffcc00; /* Dorado/Amarillo para contraste */
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+
+        header p {
+            font-size: 1.1em;
+            margin-top: 5px;
+        }
+
+        /* Estilo de Secciones */
+        .section {
+            background: #fff;
+            padding: 30px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .section h2 {
+            color: #4a148c;
+            border-bottom: 2px solid #ffcc00;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+
+        .section h3 {
+            color: #7b1fa2; /* Morado más claro */
+            margin-top: 15px;
+            font-size: 1.5em;
+        }
+
+        /* Estilo para Listas y Catálogo */
+        ul {
+            list-style: disc;
+            margin-left: 20px;
+        }
+
+        .catalogo-list {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .catalogo-list li {
+            background: #f8f8f8;
+            padding: 15px;
+            border-left: 5px solid #7b1fa2;
+            flex: 1 1 calc(50% - 20px); /* 2 items por fila en escritorio */
+        }
+        
+        /* Estilo de Botones */
+        .btn {
+            display: inline-block;
+            background: #ffcc00; /* Dorado/Amarillo */
+            color: #333;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            background: #e6b800;
+        }
+
+        .whatsapp-btn {
+            background: #25d366; /* Color de WhatsApp */
+            color: white;
+            padding: 15px 30px;
+            font-size: 1.1em;
+        }
+        
+        .whatsapp-btn:hover {
+            background: #1da851;
+        }
+
+        /* Estilo para citas o destacados */
+        blockquote {
+            background: #f8f8f8;
+            border-left: 5px solid #4a148c;
+            padding: 15px;
+            margin: 20px 0;
+            font-style: italic;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <h1>🍾 Ezel Market</h1>
+            <p>Tu Licorería de **Confianza** y **Calidad**</p>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <section class="section">
+            <h2>¡Bienvenido a Ezel Market!</h2>
+            <p>Somos tu destino principal para encontrar la más selecta variedad de bebidas alcohólicas, vinos y cervezas. Nos dedicamos al **Comercio al por menor** para consumo fuera del establecimiento, ofreciéndote productos de calidad con la comodidad y el servicio que mereces.</p>
+        </section>
+
+        <section class="section">
+            <h2>✨ Nuestro Compromiso</h2>
+            
+            <div style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    <h3>Misión</h3>
+                    <p>Nuestra misión es ofrecer una **amplia variedad de bebidas alcohólicas de calidad**, a precios accesibles para el público adulto de la zona, brindando siempre una **atención cordial y personalizada** que permita a cada cliente sentirse bienvenido y satisfecho. Buscamos ser un espacio donde la experiencia de compra se combine con el buen servicio, generando confianza y fidelidad en quienes nos eligen.</p>
+                </div>
+                <div style="flex: 1;">
+                    <h3>Visión</h3>
+                    <p>Proyectamos **expandir nuestras operaciones a múltiples puntos estratégicos** dentro del distrito de Santa Anita y, posteriormente, a otras zonas de la ciudad, consolidando nuestra presencia en el mercado. Aspiramos a ser **reconocidos por la excelencia en la atención al cliente**, la accesibilidad de nuestros productos y la confianza que inspiramos, logrando así un crecimiento sostenido y una mayor demanda en cada uno de nuestros locales.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>🥂 Nuestro Catálogo Destacado</h2>
+            <p>Encuentra lo que necesitas para tu celebración o momento de relax. Nuestro inventario está diseñado para asegurar que siempre encuentres opciones que se ajusten a tus gustos y presupuesto.</p>
+
+            <ul class="catalogo-list">
+                <li>**Licores Premium:** Rones, Vodkas, Ginebras, Tequilas y más de marcas nacionales e internacionales.</li>
+                <li>**Vinos Selectos:** Tintos, Blancos, Rosados y Espumantes de diversas cepas y bodegas.</li>
+                <li>**Cervezas Variadas:** Amplia gama de cervezas artesanales, nacionales e importadas.</li>
+                <li>**Complementos:** Hielos, mezcladores, snacks y otros productos relacionados.</li>
+            </ul>
+
+            <blockquote>
+                **Nuestro objetivo:** **Optimizar la rentabilidad y el posicionamiento de marca** ofreciendo productos de calidad a precios accesibles.
+            </blockquote>
+            
+            <a href="/Identity/Account/Register" class="btn">VER CATÁLOGO COMPLETO</a>
+        </section>
+
+        <section class="section" style="text-align: center;">
+            <h2>📞 ¡Contáctanos y Haz tu Pedido!</h2>
+            <p>¿Necesitas una cotización, saber la disponibilidad o realizar tu pedido rápido?</p>
+            
+            <p style="font-size: 1.2em; font-weight: bold; margin: 15px 0;">¡Te atendemos directamente por WhatsApp!</p>
+            
+            <a href="https://wa.me/51920376517" target="_blank" class="btn whatsapp-btn">
+                <span style="font-size: 1.5em; vertical-align: middle; margin-right: 10px;">&#9990;</span>  920376517
+            </a>
+            <p style="margin-top: 15px; font-size: 0.9em; color: #777;">*Atención solo a mayores de edad. Consumo responsable.</p>
+        </section>
+        
+        <section class="section">
+            <h2>📊 Gestión y Calidad</h2>
+            <p>Nuestra operación se basa en procesos clave para garantizar la mejor calidad y servicio:</p>
+            <ul>
+                <li>**Comercialización de Bebidas:** Adquisición, almacenamiento, gestión de inventario y venta, garantizando el cumplimiento normativo y la calidad del producto.</li>
+                <li>**Gestión Financiera:** Control, registro y análisis de ingresos y egresos para asegurar la sostenibilidad económica.</li>
+                <li>**Marketing y Promoción:** Estrategias de difusión y ofertas para atraer nuevos clientes y **fidelizar a los existentes**.</li>
+            </ul>
+        </section>
+
+    </div>
+
+    <footer style="background: #333; color: white; text-align: center; padding: 20px; margin-top: 20px;">
+        <p>&copy; 2025 Ezel Market. Todos los derechos reservados. | Venta de Bebidas Alcohólicas para Consumo Fuera del Establecimiento.</p>
+    </footer>
+
+</body>
+</html>
