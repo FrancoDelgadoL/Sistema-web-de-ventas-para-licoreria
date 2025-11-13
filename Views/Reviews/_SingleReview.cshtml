@@ -1,0 +1,12 @@
+@model Ezel_Market.Models.Review
+
+<div class="card mb-2">
+    <div class="card-body">
+        <strong>@Model.UserEmail</strong> sobre <em>@Model.ProductName</em>:
+        <br />
+        Calificación: @Model.Rating/5
+        <br />
+        @Model.Content
+        <button class="btn btn-sm btn-danger float-end report-btn" data-id="@Model.Id">Reportar</button>
+    </div>
+</div>
